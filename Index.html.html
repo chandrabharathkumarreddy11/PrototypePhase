@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PRAHARI — Traffic Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --ink:#070b18; --bg:#0a1024; --panel:#0f1830; --panel2:#13203f; --raised:#16244a;
+    --line:#1f2d54; --line2:#2a3a66;
+    --steel:#7785ad; --mist:#aab6da; --paper:#e8edfb; --white:#f6f9ff;
+    --blue:#3b82f6; --sky:#38bdf8; --cyan:#22d3ee; --amber:#f59e0b; --red:#ef4444;
+    --green:#22c55e; --violet:#8b5cf6; --pink:#ec4899; --gold:#fbbf24;
+    --crit:#ef4444; --high:#f59e0b; --med:#eab308; --low:#22c55e;
+    --r:16px; --r-sm:10px; --r-xs:7px;
+    --sidebar:248px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,sans-serif; color:var(--paper); background:var(--ink);
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:5px}
+  ::-webkit-scrollbar-thumb:hover{background:#3a4d80}
+
+  /* ── App shell ── */
+  .app{display:flex;min-height:100vh}
+
+  /* ── Sidebar ── */
+  .sidebar{width:var(--sidebar);flex-shrink:0;background:linear-gradient(180deg,#0c1428,#080d1c);
+    border-right:1px solid var(--line);position:fixed;top:0;bottom:0;left:0;z-index:50;
+    display:flex;flex-direction:column;padding:22px 0}
+  .sb-brand{padding:0 22px 20px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .sb-logo{font-family:'Sora';font-weight:800;font-size:24px;letter-spacing:1px;
+    background:linear-gradient(100deg,#7cc4ff,#22d3ee 60%,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sb-sub{font-size:10px;color:var(--steel);font-weight:500;letter-spacing:.5px;margin-top:3px;text-transform:uppercase}
+  .sb-nav{flex:1;overflow-y:auto;padding:4px 12px}
+  .sb-sec{font-size:10px;color:#566089;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:14px 12px 6px}
+  .sb-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-sm);
+    font-size:13.5px;font-weight:500;color:var(--mist);cursor:pointer;transition:all .15s;margin-bottom:2px;border:1px solid transparent}
+  .sb-item:hover{background:rgba(255,255,255,.04);color:var(--white)}
+  .sb-item.active{background:linear-gradient(100deg,rgba(59,130,246,.18),rgba(34,211,238,.1));
+    color:var(--white);border-color:rgba(56,189,248,.3)}
+  .sb-item .si{width:18px;text-align:center;font-size:15px;opacity:.9}
+  .sb-foot{padding:14px 22px 0;border-top:1px solid var(--line);font-size:10px;color:var(--steel);line-height:1.7}
+
+  /* ── Main ── */
+  .main{margin-left:var(--sidebar);flex:1;min-width:0;background:
+    radial-gradient(900px 500px at 90% -5%, #13224d 0%, transparent 55%),
+    radial-gradient(700px 400px at -5% 105%, #0e1d44 0%, transparent 50%), var(--bg)}
+  .topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+    padding:14px 28px;background:rgba(10,16,36,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .tb-title{font-family:'Sora';font-size:17px;font-weight:600}
+  .tb-bc{font-size:12px;color:var(--steel)}
+  .live{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;
+    background:rgba(239,68,68,.13);color:#ff8f8f;padding:5px 12px;border-radius:20px;border:1px solid rgba(239,68,68,.32)}
+  .live .pulse{width:7px;height:7px;border-radius:50%;background:#ff5a5a;animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.6)}}
+  .tb-right{margin-left:auto;display:flex;align-items:center;gap:18px}
+  .clock{font-family:'JetBrains Mono';font-size:13px;color:var(--mist);font-weight:500}
+  .tb-alert{display:flex;align-items:center;gap:6px;font-size:12px;color:#ffb0b0;font-weight:500;cursor:pointer}
+  .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff}
+
+  .view{padding:24px 28px 60px;display:none;animation:fade .35s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* ── Hero ── */
+  .hero{background:linear-gradient(110deg,rgba(59,130,246,.14),rgba(139,92,246,.08) 60%,transparent),
+    var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px 30px;margin-bottom:22px;position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;
+    background:radial-gradient(circle,rgba(34,211,238,.14),transparent 70%)}
+  .hero h1{font-family:'Sora';font-size:25px;font-weight:700;letter-spacing:.3px;position:relative;max-width:760px;line-height:1.3}
+  .hero h1 .accent{background:linear-gradient(90deg,#7cc4ff,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-size:13.5px;color:var(--mist);margin-top:10px;max-width:680px;position:relative;line-height:1.6}
+  .hero .thesis{display:inline-block;margin-top:16px;font-size:12px;font-weight:600;color:#9fe6c4;
+    background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.28);padding:7px 14px;border-radius:20px;position:relative}
+
+  /* ── KPI cards ── */
+  .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:var(--r);padding:16px 17px;position:relative;overflow:hidden;transition:transform .18s,border-color .18s}
+  .kpi:hover{transform:translateY(-3px);border-color:var(--line2)}
+  .kpi::after{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--bar,linear-gradient(90deg,var(--blue),var(--cyan)))}
+  .kpi .klabel{font-size:10px;color:var(--steel);font-weight:600;letter-spacing:.4px;text-transform:uppercase;line-height:1.3}
+  .kpi .kval{font-family:'Sora';font-weight:700;font-size:27px;margin:8px 0 3px;letter-spacing:.4px}
+  .kpi .kdelta{font-size:10.5px;font-weight:600}
+  .up{color:#ff8f8f}.down{color:#7ee2a8}.flat{color:var(--steel)}
+
+  /* ── Panels & grids ── */
+  .row{display:grid;gap:16px;margin-bottom:16px}
+  .r-2-1{grid-template-columns:1.45fr 1fr}
+  .r-1-1{grid-template-columns:1fr 1fr}
+  .r-2{grid-template-columns:1fr 1fr}
+  .r-3{grid-template-columns:repeat(3,1fr)}
+  .panel{background:linear-gradient(180deg,rgba(255,255,255,.022),transparent),var(--panel);
+    border:1px solid var(--line);border-radius:var(--r);padding:19px 21px}
+  .ph{display:flex;align-items:center;gap:10px;margin-bottom:3px}
+  .ph h3{font-family:'Sora';font-size:14.5px;font-weight:600}
+  .ph .badge{margin-left:auto;font-size:10px;font-weight:600;padding:3px 10px;border-radius:14px}
+  .b-crit{background:rgba(239,68,68,.15);color:#ff9a9a}
+  .b-info{background:rgba(56,189,248,.14);color:#8fd6ff}
+  .b-ok{background:rgba(34,197,94,.14);color:#86efac}
+  .psub{font-size:11.5px;color:var(--steel);margin-bottom:16px}
+  .ic{width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .ic-v{background:rgba(139,92,246,.16);color:#c4b5fd}
+  .ic-b{background:rgba(59,130,246,.16);color:#93c5fd}
+  .ic-a{background:rgba(245,158,11,.16);color:#fcd34d}
+  .ic-c{background:rgba(34,211,238,.16);color:#67e8f9}
+  .ic-g{background:rgba(34,197,94,.16);color:#86efac}
+  .ic-p{background:rgba(236,72,153,.16);color:#f9a8d4}
+
+  .chart-wrap{position:relative;height:240px}
+  .chart-sm{position:relative;height:200px}
+
+  footer{margin-left:var(--sidebar);text-align:center;font-size:11px;color:var(--steel);padding:24px;line-height:1.8;border-top:1px solid var(--line)}
+  footer b{color:var(--mist)}
+
+  @media(max-width:1200px){.kpis{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:1080px){
+    .sidebar{transform:translateX(-100%);transition:transform .25s}
+    .sidebar.open{transform:none}
+    .main,footer{margin-left:0}
+    .r-2-1,.r-1-1,.r-2,.r-3{grid-template-columns:1fr}
+    .menu-btn{display:flex!important}
+  }
+  @media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .menu-btn{display:none;align-items:center;justify-content:center;width:36px;height:36px;border-radius:9px;
+    background:var(--raised);border:1px solid var(--line2);color:var(--paper);font-size:18px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ════════ SIDEBAR ════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo">PRAHARI</div>
+      <div class="sb-sub">Traffic Intelligence Platform</div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-sec">Operations</div>
+      <div class="sb-item active" data-view="overview"><span class="si">▦</span> Command Center</div>
+      <div class="sb-item" data-view="feed"><span class="si">⚡</span> Live Violation Feed</div>
+      <div class="sb-item" data-view="dna"><span class="si">⬡</span> Behavioural DNA</div>
+      <div class="sb-sec">Intelligence</div>
+      <div class="sb-item" data-view="jhi"><span class="si">◈</span> Junction Health Index</div>
+      <div class="sb-item" data-view="heatmap"><span class="si">◉</span> Violation Heatmap</div>
+      <div class="sb-item" data-view="forecast"><span class="si">◷</span> 48-Hour Forecast</div>
+      <div class="sb-sec">Decisions</div>
+      <div class="sb-item" data-view="deploy"><span class="si">◎</span> Officer Optimizer</div>
+      <div class="sb-item" data-view="recommend"><span class="si">✦</span> AI Recommendations</div>
+      <div class="sb-item" data-view="advisor"><span class="si">⚐</span> Traffic Control Advisor</div>
+      <div class="sb-sec">Impact</div>
+      <div class="sb-item" data-view="prevention"><span class="si">◍</span> Prevention &amp; Awareness</div>
+      <div class="sb-item" data-view="citizen"><span class="si">♥</span> Citizen Impact</div>
+      <div class="sb-item" data-view="analytics"><span class="si">▤</span> Analytics &amp; Reports</div>
+    </nav>
+    <div class="sb-foot">
+      <b style="color:var(--mist)">Bengaluru Traffic Police</b><br>
+      Smart City Operations · v1.0<br>
+      Prototype · simulated data
+    </div>
+  </aside>
+
+  <!-- ════════ MAIN ════════ -->
+  <div class="main">
+    <div class="topbar">
+      <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+      <div>
+        <div class="tb-title" id="tbTitle">Command Center</div>
+        <div class="tb-bc" id="tbCrumb">Operations · City-wide overview</div>
+      </div>
+      <span class="live"><span class="pulse"></span>LIVE</span>
+      <div class="tb-right">
+        <span class="tb-alert" onclick="go('recommend')">⚠ <span>3</span> critical alerts</span>
+        <span class="clock" id="clock">--:--:--</span>
+        <div class="avatar">BP</div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: OVERVIEW ═══ -->
+    <section class="view active" id="v-overview">
+      <div class="hero">
+        <h1>Every camera captures violations. <span class="accent">PRAHARI tells authorities where to act, when to act, and why it matters.</span></h1>
+        <p>A city-scale traffic intelligence platform that turns raw camera footage into enforcement decisions — detecting violations, scoring offenders, predicting hotspots, and optimising officer deployment in real time.</p>
+        <span class="thesis">Detection is not the final goal. Better enforcement decisions are.</span>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="klabel">Total violations today</div><div class="kval" id="kViol">2,841</div><div class="kdelta up">▲ +18% vs yesterday</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#22c55e,#4ade80)"><div class="klabel">Active cameras</div><div class="kval">1,284<span style="font-size:14px;color:var(--steel)">/1,340</span></div><div class="kdelta down">96% online</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#ef4444,#f87171)"><div class="klabel">Critical junctions</div><div class="kval">12</div><div class="kdelta up">▲ 3 since morning</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#8b5cf6,#a78bfa)"><div class="klabel">Repeat offenders · 7d</div><div class="kval">384</div><div class="kdelta up">▲ 62 habitual</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#f59e0b,#fbbf24)"><div class="klabel">Enforcement score</div><div class="kval">78<span style="font-size:14px;color:var(--steel)">/100</span></div><div class="kdelta down">▲ +6 this week</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#22d3ee,#38bdf8)"><div class="klabel">Challan recovery</div><div class="kval">₹4.2L</div><div class="kdelta down">▲ today est.</div></div>
+      </div>
+
+      <div class="row r-2-1">
+        <div class="panel">
+          <div class="ph"><span class="ic ic-b">▦</span><h3>Junction Health Index</h3><span class="badge b-crit">12 critical</span></div>
+          <div class="psub">Live 0–100 risk score per junction · higher means more dangerous</div>
+          <div id="ovJhi"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><span class="ic ic-c">◧</span><h3>Violation mix · 24h</h3></div>
+          <div class="psub">Share of total detected violations</div>
+          <div class="chart-sm"><canvas id="ovMix" role="img" aria-label="Violation type distribution"></canvas></div>
+        </div>
+      </div>
+
+      <div class="row r-2-1">
+        <div class="panel">
+          <div class="ph"><span class="ic ic-a">◷</span><h3>Violation trend · 12h</h3></div>
+          <div class="psub">City-wide violations detected per hour</div>
+          <div class="chart-sm"><canvas id="ovTrend" role="img" aria-label="Hourly violation trend"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><span class="ic ic-g">✦</span><h3>Top AI recommendation</h3><span class="badge b-crit">91% conf.</span></div>
+          <div class="psub">Highest-priority action right now</div>
+          <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:14px 16px">
+            <div style="font-family:'Sora';font-weight:600;font-size:15px">Deploy 3 officers → Silk Board</div>
+            <div style="font-size:12px;color:var(--mist);margin-top:9px;line-height:1.9">
+              ▸ Wrong-side driving forecast: <b style="color:#ff9a9a">+62%</b><br>
+              ▸ Junction Health Index: <b style="color:#ff9a9a">94</b><br>
+              ▸ <b style="color:#fcd34d">14 habitual offenders</b> in last 7 days<br>
+              ▸ High accident probability at peak hours
+            </div>
+            <div style="display:flex;gap:18px;margin-top:13px;padding-top:12px;border-top:1px solid var(--line)">
+              <div><div style="font-size:10px;color:var(--steel)">Violations prevented</div><div style="font-family:'Sora';font-weight:700;font-size:18px;color:#86efac">180</div></div>
+              <div><div style="font-size:10px;color:var(--steel)">Accident risk ↓</div><div style="font-family:'Sora';font-weight:700;font-size:18px;color:#86efac">23%</div></div>
+              <div><div style="font-size:10px;color:var(--steel)">Enforcement ROI</div><div style="font-family:'Sora';font-weight:700;font-size:18px;color:#67e8f9">30×</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: LIVE FEED ═══ -->
+    <section class="view" id="v-feed">
+      <div class="panel">
+        <div class="ph"><span class="ic ic-c">⚡</span><h3>Live violation feed</h3><span class="badge b-info" id="feedCount">streaming</span></div>
+        <div class="psub">Real-time detections across the city camera network · newest first</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px" id="feedTable">
+            <thead>
+              <tr style="text-align:left;color:var(--steel);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">
+                <th style="padding:9px 10px">Vehicle</th><th style="padding:9px 10px">Violation</th>
+                <th style="padding:9px 10px">Conf.</th><th style="padding:9px 10px">Location</th>
+                <th style="padding:9px 10px">Time</th><th style="padding:9px 10px">Severity</th>
+              </tr>
+            </thead>
+            <tbody id="feedBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: DNA ═══ -->
+    <section class="view" id="v-dna">
+      <div class="row r-1-1">
+        <div class="panel">
+          <div class="ph"><span class="ic ic-v">⬡</span><h3>Behavioural DNA engine</h3></div>
+          <div class="psub">Per-vehicle recidivism score, weighted by severity × frequency × recency</div>
+          <div id="dnaList"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><span class="ic ic-v">◷</span><h3>Offender tier distribution</h3></div>
+          <div class="psub">All flagged vehicles by behavioural tier</div>
+          <div class="chart-sm"><canvas id="dnaPie" role="img" aria-label="Offender tier distribution"></canvas></div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <div style="flex:1;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.22);border-radius:9px;padding:11px;text-align:center">
+              <div style="font-family:'Sora';font-weight:700;font-size:20px;color:#86efac">2,104</div><div style="font-size:10px;color:var(--steel)">First-time</div></div>
+            <div style="flex:1;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);border-radius:9px;padding:11px;text-align:center">
+              <div style="font-family:'Sora';font-weight:700;font-size:20px;color:#fcd34d">322</div><div style="font-size:10px;color:var(--steel)">Repeat</div></div>
+            <div style="flex:1;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22);border-radius:9px;padding:11px;text-align:center">
+              <div style="font-family:'Sora';font-weight:700;font-size:20px;color:#ff9a9a">62</div><div style="font-size:10px;color:var(--steel)">Habitual</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="ic ic-v">▤</span><h3>Vehicle profile · KA05AB7734</h3><span class="badge b-crit">Habitual · DNA 91</span></div>
+        <div class="psub">Historical violation timeline · last 30 days</div>
+        <div class="chart-sm"><canvas id="dnaTimeline" role="img" aria-label="Violation history timeline for vehicle"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: JHI ═══ -->
+    <section class="view" id="v-jhi">
+      <div class="panel">
+        <div class="ph"><span class="ic ic-b">◈</span><h3>Junction Health Index — city ranking</h3></div>
+        <div class="psub">Composite score: violation density + severity + repeat-offender ratio + peak-hour frequency</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="text-align:left;color:var(--steel);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">
+              <th style="padding:10px">Rank</th><th style="padding:10px">Junction</th><th style="padding:10px">JHI</th>
+              <th style="padding:10px">Risk level</th><th style="padding:10px">Primary driver</th><th style="padding:10px">7d trend</th></tr></thead>
+            <tbody id="jhiTable"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="row r-1-1" style="margin-top:16px">
+        <div class="panel"><div class="ph"><span class="ic ic-b">◷</span><h3>JHI trend · top 3 junctions</h3></div>
+          <div class="psub">7-day rolling health index</div>
+          <div class="chart-sm"><canvas id="jhiTrend" role="img" aria-label="JHI trend over 7 days"></canvas></div></div>
+        <div class="panel"><div class="ph"><span class="ic ic-b">◧</span><h3>Risk level distribution</h3></div>
+          <div class="psub">All 47 monitored junctions</div>
+          <div class="chart-sm"><canvas id="jhiBar" role="img" aria-label="Junctions by risk level"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: HEATMAP ═══ -->
+    <section class="view" id="v-heatmap">
+      <div class="panel">
+        <div class="ph"><span class="ic ic-c">◉</span><h3>Bengaluru violation heatmap</h3><span class="badge b-crit">2 critical zones</span></div>
+        <div class="psub">City-wide risk density · click a zone for detail</div>
+        <div id="heatmap" style="position:relative;height:420px;border-radius:12px;overflow:hidden;
+          background:linear-gradient(135deg,#0c1730,#0e1c3c);border:1px solid var(--line2)"></div>
+        <div style="display:flex;gap:18px;margin-top:14px;font-size:11.5px;color:var(--mist);flex-wrap:wrap">
+          <span>🔴 Critical</span><span>🟠 High</span><span>🟡 Medium</span><span>🟢 Low</span>
+          <span style="margin-left:auto;color:var(--steel)">Circle size = violation density</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: FORECAST ═══ -->
+    <section class="view" id="v-forecast">
+      <div class="row r-2-1">
+        <div class="panel"><div class="ph"><span class="ic ic-c">◷</span><h3>48-hour violation forecast</h3></div>
+          <div class="psub">LSTM model · trained on 90-day history · event-calendar &amp; weather adjusted</div>
+          <div class="chart-wrap"><canvas id="fcMain" role="img" aria-label="48 hour forecast"></canvas></div></div>
+        <div class="panel"><div class="ph"><span class="ic ic-a">⚠</span><h3>Predicted risk spikes</h3></div>
+          <div class="psub">Where &amp; when violations will surge</div>
+          <div id="fcSpikes"></div>
+        </div>
+      </div>
+      <div class="row r-2">
+        <div class="panel"><div class="ph"><span class="ic ic-b">☁</span><h3>Weather impact</h3></div>
+          <div class="psub">Forecast adjustment from weather conditions</div>
+          <div id="fcWeather"></div></div>
+        <div class="panel"><div class="ph"><span class="ic ic-p">★</span><h3>Event impact</h3></div>
+          <div class="psub">Scheduled events affecting traffic risk</div>
+          <div id="fcEvents"></div></div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: DEPLOY ═══ -->
+    <section class="view" id="v-deploy">
+      <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+        <div class="kpi"><div class="klabel">Officers available</div><div class="kval">48</div><div class="kdelta flat">across 6 zones</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#22c55e,#4ade80)"><div class="klabel">Violations preventable</div><div class="kval">640</div><div class="kdelta down">with optimal plan</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#f59e0b,#fbbf24)"><div class="klabel">Challan recovery</div><div class="kval">₹1.9L</div><div class="kdelta down">projected today</div></div>
+        <div class="kpi" style="--bar:linear-gradient(90deg,#22d3ee,#38bdf8)"><div class="klabel">Enforcement ROI</div><div class="kval">28×</div><div class="kdelta down">cost vs recovery</div></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="ic ic-a">◎</span><h3>Officer deployment optimizer — tomorrow's plan</h3><span class="badge b-ok">AI optimised</span></div>
+        <div class="psub">Maximises violations deterred per officer-hour, weighted by junction risk &amp; predicted offenders</div>
+        <div id="deployList"></div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: RECOMMENDATIONS ═══ -->
+    <section class="view" id="v-recommend">
+      <div class="psub" style="margin-bottom:16px;font-size:13px;color:var(--mist)">Explainable AI recommendations — every action shows the reasoning behind it, so authorities can trust and act on it.</div>
+      <div id="recList"></div>
+    </section>
+
+    <!-- ═══ VIEW: ADVISOR ═══ -->
+    <section class="view" id="v-advisor">
+      <div class="panel" style="margin-bottom:16px">
+        <div class="ph"><span class="ic ic-p">⚐</span><h3>AI Traffic Control Advisor</h3><span class="badge b-crit">Active trigger</span></div>
+        <div class="psub">Proactive intervention when events + traffic conditions combine into elevated risk</div>
+        <div style="background:linear-gradient(110deg,rgba(236,72,153,.08),transparent);border:1px solid rgba(236,72,153,.25);border-radius:12px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="font-family:'Sora';font-weight:700;font-size:18px">MG Road</div>
+            <span class="badge b-crit">Risk: High</span>
+            <span style="font-size:12px;color:var(--mist)">Trigger: Concert + peak-hour traffic (7–10 PM)</span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:16px">
+            <div class="advisor-act">✓ Deploy additional officers</div>
+            <div class="advisor-act">✓ Parking restrictions</div>
+            <div class="advisor-act">✓ Public awareness alerts</div>
+            <div class="advisor-act">✓ Temporary diversions</div>
+            <div class="advisor-act">✓ Increased surveillance</div>
+          </div>
+        </div>
+      </div>
+      <style>.advisor-act{background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:9px;padding:12px 14px;font-size:13px;font-weight:500;color:#f9a8d4}</style>
+    </section>
+
+    <!-- ═══ VIEW: PREVENTION ═══ -->
+    <section class="view" id="v-prevention">
+      <div class="psub" style="margin-bottom:16px;font-size:13px;color:var(--mist)">Move beyond enforcement — targeted awareness campaigns reduce violations at the source.</div>
+      <div class="row r-3" id="campaignRow"></div>
+      <div class="panel" style="margin-top:4px">
+        <div class="ph"><span class="ic ic-g">◍</span><h3>Estimated combined reach</h3></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-top:8px">
+          <span style="font-family:'Sora';font-weight:800;font-size:42px;background:linear-gradient(90deg,#86efac,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent">50,000+</span>
+          <span style="font-size:14px;color:var(--mist)">citizens across 3 campaigns</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ VIEW: CITIZEN ═══ -->
+    <section class="view" id="v-citizen">
+      <div class="hero" style="margin-bottom:22px">
+        <h1 style="font-size:21px">Enforcement that <span class="accent">citizens can feel</span></h1>
+        <p>Estimated daily impact of PRAHARI-guided enforcement across Bengaluru.</p>
+      </div>
+      <div class="row r-3" id="citizenRow"></div>
+    </section>
+
+    <!-- ═══ VIEW: ANALYTICS ═══ -->
+    <section class="view" id="v-analytics">
+      <div class="row r-2">
+        <div class="panel"><div class="ph"><span class="ic ic-b">▤</span><h3>Violation trends · 7 days</h3></div>
+          <div class="psub">Daily totals by severity</div>
+          <div class="chart-sm"><canvas id="anTrend" role="img" aria-label="7 day violation trend"></canvas></div></div>
+        <div class="panel"><div class="ph"><span class="ic ic-c">◧</span><h3>Violation distribution</h3></div>
+          <div class="psub">By type, last 7 days</div>
+          <div class="chart-sm"><canvas id="anDist" role="img" aria-label="Violation distribution by type"></canvas></div></div>
+      </div>
+      <div class="row r-2">
+        <div class="panel"><div class="ph"><span class="ic ic-a">◷</span><h3>Severity distribution</h3></div>
+          <div class="psub">Critical / high / medium / low share</div>
+          <div class="chart-sm"><canvas id="anSev" role="img" aria-label="Severity distribution"></canvas></div></div>
+        <div class="panel"><div class="ph"><span class="ic ic-v">⬡</span><h3>Repeat offender analysis</h3></div>
+          <div class="psub">New vs repeat vs habitual, by week</div>
+          <div class="chart-sm"><canvas id="anRepeat" role="img" aria-label="Repeat offender analysis"></canvas></div></div>
+      </div>
+    </section>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+<footer>
+  <b>PRAHARI</b> — Predictive Road Analytics &amp; Hotspot Intelligence for Enforcement ·
+  Flipkart Gridlock Hackathon 2.0 · Theme 3<br>
+  An AI-powered traffic enforcement, prevention &amp; decision intelligence platform · Prototype with simulated data
+</footer>
+
+<script>
+/* ════════ DATA ════════ */
+const D = {
+  junctions:[
+    {name:"Silk Board Junction", jhi:94, risk:"Critical", driver:"Wrong-side + red-light", trend:"+7"},
+    {name:"Marathahalli Junction", jhi:81, risk:"Critical", driver:"Illegal parking + triple-riding", trend:"+4"},
+    {name:"MG Road Signal", jhi:73, risk:"High", driver:"Red-light violation", trend:"+2"},
+    {name:"Hebbal Flyover", jhi:67, risk:"High", driver:"Helmet non-compliance", trend:"-1"},
+    {name:"KR Puram Signal", jhi:54, risk:"Medium", driver:"Stop-line violation", trend:"+3"},
+    {name:"Bannerghatta Road", jhi:38, risk:"Low", driver:"Seatbelt non-compliance", trend:"-2"},
+  ],
+  offenders:[
+    {plate:"KA03MF2291", tier:"Habitual", n:14, dna:97},
+    {plate:"KA05AB7734", tier:"Habitual", n:11, dna:91},
+    {plate:"KA01MX4450", tier:"Repeat", n:7, dna:74},
+    {plate:"KA29R5891", tier:"Repeat", n:6, dna:68},
+    {plate:"KA51N8820", tier:"Repeat", n:5, dna:61},
+  ],
+  violTypes:["Helmet","No seatbelt","Illegal parking","Red-light","Wrong-side","Triple riding","Stop-line"],
+  feedSeed:[
+    ["KA05AB7734","Helmet non-compliance",0.94,"Silk Board","Critical"],
+    ["KA51N8820","Red-light violation",0.97,"MG Road","Critical"],
+    ["KA03MF2291","Wrong-side driving",0.89,"Silk Board","Critical"],
+    ["KA20C1145","Triple riding",0.86,"Marathahalli","High"],
+    ["KA01MX4450","Illegal parking",0.92,"Marathahalli","High"],
+    ["KA41B7765","No seatbelt",0.83,"Hebbal","Medium"],
+    ["KA09H3320","Stop-line violation",0.88,"KR Puram","Medium"],
+    ["KA29R5891","Helmet non-compliance",0.91,"Bannerghatta","Medium"],
+  ],
+  zones:[
+    {name:"Silk Board",x:62,y:72,r:46,lvl:"Critical",d:450},
+    {name:"Marathahalli",x:78,y:42,r:38,lvl:"Critical",d:320},
+    {name:"MG Road",x:44,y:50,r:30,lvl:"High",d:280},
+    {name:"Hebbal",x:40,y:20,r:24,lvl:"Medium",d:195},
+    {name:"KR Puram",x:82,y:60,r:22,lvl:"Medium",d:160},
+    {name:"Bannerghatta Rd",x:50,y:86,r:18,lvl:"Low",d:110},
+    {name:"Whitefield",x:90,y:34,r:20,lvl:"Medium",d:140},
+    {name:"Jayanagar",x:34,y:74,r:16,lvl:"Low",d:90},
+  ],
+  recommendations:[
+    {loc:"Silk Board Junction",risk:"Critical",conf:91,
+     actions:["Deploy 3 officers","Increase camera monitoring","Initiate wrong-side awareness campaign"],
+     reasons:["Wrong-side driving forecast: +62%","Junction Health Index: 94","14 habitual offenders in last 7 days","High accident probability during peak hours"],
+     impact:["180 violations prevented","23% reduction in accident risk","30× enforcement ROI"]},
+    {loc:"Marathahalli Junction",risk:"Critical",conf:84,
+     actions:["Deploy 2 officers","Clear illegal parking zone","Tow-truck on standby"],
+     reasons:["Illegal parking forecast: +45%","Junction Health Index: 81","Recurring evening congestion","Triple-riding cluster detected"],
+     impact:["120 violations prevented","16% reduction in accident risk","22× enforcement ROI"]},
+    {loc:"MG Road Signal",risk:"High",conf:88,
+     actions:["Deploy 2 officers","Adjust signal timing","Red-light compliance campaign"],
+     reasons:["Red-light violation forecast: +45% (concert night)","Junction Health Index: 73","Event: concert 7–10 PM","Pedestrian conflict elevated"],
+     impact:["95 violations prevented","19% reduction in accident risk","18× enforcement ROI"]},
+  ],
+  campaigns:[
+    {title:"Helmet awareness drive",area:"Hebbal",reach:"18,000",ic:"⛑",col:"#22c55e"},
+    {title:"Wrong-side driving awareness",area:"Silk Board",reach:"22,000",ic:"⛔",col:"#ef4444"},
+    {title:"Red-light compliance campaign",area:"MG Road",reach:"10,000",ic:"🚦",col:"#f59e0b"},
+  ],
+  citizen:[
+    {label:"Violations prevented",val:"180",ic:"🛡",col:"#86efac"},
+    {label:"Fuel saved",val:"420 L",ic:"⛽",col:"#67e8f9"},
+    {label:"Travel time reduced",val:"14%",ic:"⏱",col:"#93c5fd"},
+    {label:"Accident risk reduced",val:"23%",ic:"❤",col:"#f9a8d4"},
+    {label:"Enforcement efficiency",val:"+31%",ic:"⚡",col:"#fcd34d"},
+    {label:"Citizens reached",val:"50K+",ic:"👥",col:"#c4b5fd"},
+  ],
+  deploy:[
+    {title:"3 officers · Silk Board · 6–8 PM",meta:"180 violations deterred · ₹54,000 recovery · watch KA03MF2291",lvl:"crit"},
+    {title:"2 officers · Marathahalli · 8–10 AM",meta:"120 violations deterred · ₹36,000 recovery",lvl:"crit"},
+    {title:"2 officers · MG Road · 7–10 PM (concert)",meta:"95 violations deterred · diversions advised",lvl:"high"},
+    {title:"1 officer · KR Puram · 5–7 PM",meta:"60 violations deterred · stop-line focus",lvl:"high"},
+    {title:"Repoint camera #14 · Hebbal",meta:"Blind spot — +34% violation undercount",lvl:"info"},
+  ],
+};
+const riskColor=r=>({Critical:"#ef4444",High:"#f59e0b",Medium:"#eab308",Low:"#22c55e"}[r]||"#7785ad");
+const sevColor=riskColor;
+
+/* ════════ NAV ════════ */
+const titles={overview:["Command Center","Operations · City-wide overview"],
+  feed:["Live Violation Feed","Operations · Real-time detections"],
+  dna:["Behavioural DNA Engine","Operations · Vehicle risk profiling"],
+  jhi:["Junction Health Index","Intelligence · Junction risk ranking"],
+  heatmap:["Violation Heatmap","Intelligence · City-wide risk density"],
+  forecast:["48-Hour Forecast","Intelligence · Predictive analytics"],
+  deploy:["Officer Deployment Optimizer","Decisions · Resource allocation"],
+  recommend:["AI Recommendations","Decisions · Explainable actions"],
+  advisor:["Traffic Control Advisor","Decisions · Proactive intervention"],
+  prevention:["Prevention & Awareness","Impact · Campaigns"],
+  citizen:["Citizen Impact","Impact · Public benefit"],
+  analytics:["Analytics & Reports","Impact · Trends & distributions"]};
+let chartsBuilt={};
+function go(v){
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active',i.dataset.view===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.id==='v-'+v));
+  document.getElementById('tbTitle').textContent=titles[v][0];
+  document.getElementById('tbCrumb').textContent=titles[v][1];
+  document.getElementById('sidebar').classList.remove('open');
+  window.scrollTo({top:0,behavior:'smooth'});
+  buildCharts(v);
+}
+document.querySelectorAll('.sb-item').forEach(i=>i.addEventListener('click',()=>go(i.dataset.view)));
+
+/* ════════ CLOCK ════════ */
+setInterval(()=>{document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false})+' IST';},1000);
+document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour12:false})+' IST';
+
+/* ════════ STATIC RENDERS ════════ */
+// Overview JHI
+const ovJhi=document.getElementById('ovJhi');
+D.junctions.forEach(j=>{const c=riskColor(j.risk);
+  ovJhi.insertAdjacentHTML('beforeend',`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <span style="font-size:13px;font-weight:500;min-width:160px">${j.name}</span>
+    <span style="flex:1;height:9px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden">
+      <span class="jbar" data-w="${j.jhi}" style="display:block;height:100%;width:0;border-radius:5px;background:${c};transition:width 1s"></span></span>
+    <span style="font-family:'JetBrains Mono';font-weight:600;font-size:14px;color:${c};min-width:28px;text-align:right">${j.jhi}</span></div>`);});
+// JHI table
+const jhiTable=document.getElementById('jhiTable');
+D.junctions.forEach((j,i)=>{const c=riskColor(j.risk);const tc=j.trend.startsWith('+')?'#ff9a9a':'#7ee2a8';
+  jhiTable.insertAdjacentHTML('beforeend',`<tr style="border-top:1px solid var(--line)">
+    <td style="padding:11px;font-family:'JetBrains Mono';color:var(--steel)">#${i+1}</td>
+    <td style="padding:11px;font-weight:500">${j.name}</td>
+    <td style="padding:11px"><span style="font-family:'JetBrains Mono';font-weight:600;color:${c}">${j.jhi}</span></td>
+    <td style="padding:11px"><span style="font-size:11px;font-weight:600;color:${c};background:${c}22;padding:3px 10px;border-radius:12px">${j.risk}</span></td>
+    <td style="padding:11px;color:var(--mist);font-size:12px">${j.driver}</td>
+    <td style="padding:11px;font-family:'JetBrains Mono';font-weight:600;color:${tc}">${j.trend}</td></tr>`);});
+// DNA list
+const dnaList=document.getElementById('dnaList');
+D.offenders.forEach(o=>{const hab=o.tier==='Habitual';const c=hab?'#ff9a9a':'#fcd34d';
+  dnaList.insertAdjacentHTML('beforeend',`<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+    <span style="font-family:'JetBrains Mono';font-weight:600;font-size:12px;background:rgba(59,130,246,.14);color:#9ec5ff;padding:4px 9px;border-radius:6px">${o.plate}</span>
+    <span style="font-size:10px;font-weight:600;padding:2px 9px;border-radius:11px;background:${c}22;color:${c}">${o.tier}</span>
+    <span style="font-size:11px;color:var(--steel)">${o.n} violations / 30d</span>
+    <span style="margin-left:auto;font-family:'JetBrains Mono';font-weight:600;font-size:13px;color:${c}">DNA ${o.dna}</span></div>`);});
+// Forecast spikes
+const fcSpikes=document.getElementById('fcSpikes');
+[["Mon 6–8 PM","Silk Board","+62%","#ef4444"],["Mon 8–10 AM","Marathahalli","+45%","#f59e0b"],
+ ["Tonight 9–11 PM","MG Road","+28%","#eab308"],["Tue 6–8 PM","KR Puram","+24%","#eab308"]].forEach(s=>{
+  fcSpikes.insertAdjacentHTML('beforeend',`<div style="display:flex;align-items:center;gap:10px;padding:11px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px;margin-bottom:8px">
+    <div><div style="font-size:13px;font-weight:500">${s[1]}</div><div style="font-size:11px;color:var(--steel)">${s[0]}</div></div>
+    <span style="margin-left:auto;font-family:'JetBrains Mono';font-weight:600;color:${s[3]}">${s[2]}</span></div>`);});
+// Weather + events
+document.getElementById('fcWeather').innerHTML=
+  [["Heavy rain · evening","Wrong-side & skid risk","+15%","#67e8f9"],["Fog · early morning","Low-visibility violations","+9%","#93c5fd"]]
+  .map(w=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid rgba(255,255,255,.05)">
+    <div><div style="font-size:13px;font-weight:500">${w[0]}</div><div style="font-size:11px;color:var(--steel)">${w[1]}</div></div>
+    <span style="margin-left:auto;font-family:'JetBrains Mono';font-weight:600;color:${w[3]}">${w[2]}</span></div>`).join('');
+document.getElementById('fcEvents').innerHTML=
+  [["Concert · MG Road","7–10 PM today","+45%","#f9a8d4"],["Cricket match · Chinnaswamy","2–6 PM Sat","+38%","#f9a8d4"],["Marathon · Cubbon Rd","6–9 AM Sun","+30%","#f9a8d4"]]
+  .map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid rgba(255,255,255,.05)">
+    <div><div style="font-size:13px;font-weight:500">${e[0]}</div><div style="font-size:11px;color:var(--steel)">${e[1]}</div></div>
+    <span style="margin-left:auto;font-family:'JetBrains Mono';font-weight:600;color:${e[3]}">${e[2]}</span></div>`).join('');
+// Deploy
+const deployList=document.getElementById('deployList');
+D.deploy.forEach(d=>{const m={crit:["#ef4444","⚠"],high:["#f59e0b","⚠"],info:["#3b82f6","◉"]}[d.lvl];
+  deployList.insertAdjacentHTML('beforeend',`<div style="display:flex;gap:12px;padding:14px;border-radius:10px;margin-bottom:9px;background:${m[0]}11;border:1px solid ${m[0]}33">
+    <div style="width:32px;height:32px;border-radius:9px;background:${m[0]}22;color:${m[0]};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${m[1]}</div>
+    <div><div style="font-size:13.5px;font-weight:500">${d.title}</div><div style="font-size:11.5px;color:var(--steel);margin-top:3px">${d.meta}</div></div></div>`);});
+// Recommendations
+const recList=document.getElementById('recList');
+D.recommendations.forEach(r=>{const c=riskColor(r.risk);
+  recList.insertAdjacentHTML('beforeend',`<div class="panel" style="margin-bottom:16px;border-left:3px solid ${c}">
+    <div class="ph"><span class="ic ic-g">✦</span><h3>AI Recommendation · ${r.loc}</h3>
+      <span class="badge" style="background:${c}22;color:${c}">${r.risk} · ${r.conf}%</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px">
+      <div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Suggested actions</div>
+        ${r.actions.map(a=>`<div style="font-size:13px;padding:4px 0;color:var(--paper)">✓ ${a}</div>`).join('')}</div>
+      <div><div style="font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Why this recommendation</div>
+        ${r.reasons.map(x=>`<div style="font-size:12px;padding:3px 0;color:var(--mist)">▸ ${x}</div>`).join('')}</div></div>
+    <div style="display:flex;gap:22px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line)">
+      ${r.impact.map(i=>`<div style="font-size:13px;font-weight:600;color:#86efac">${i}</div>`).join('')}</div></div>`);});
+// Campaigns
+const campaignRow=document.getElementById('campaignRow');
+D.campaigns.forEach(c=>{campaignRow.insertAdjacentHTML('beforeend',`<div class="panel" style="text-align:center">
+  <div style="font-size:34px;margin-bottom:8px">${c.ic}</div>
+  <div style="font-family:'Sora';font-weight:600;font-size:14px">${c.title}</div>
+  <div style="font-size:12px;color:var(--steel);margin-top:6px">Target area</div>
+  <div style="font-size:14px;font-weight:600;color:${c.col}">${c.area}</div>
+  <div style="margin-top:12px;padding-top:11px;border-top:1px solid var(--line)">
+    <span style="font-family:'Sora';font-weight:700;font-size:22px">${c.reach}</span>
+    <span style="font-size:11px;color:var(--steel)"> reach</span></div></div>`);});
+// Citizen
+const citizenRow=document.getElementById('citizenRow');
+D.citizen.forEach(c=>{citizenRow.insertAdjacentHTML('beforeend',`<div class="panel" style="text-align:center">
+  <div style="font-size:30px;margin-bottom:8px">${c.ic}</div>
+  <div style="font-family:'Sora';font-weight:800;font-size:30px;color:${c.col}">${c.val}</div>
+  <div style="font-size:12px;color:var(--mist);margin-top:4px">${c.label}</div></div>`);});
+
+/* animate overview bars on load */
+setTimeout(()=>document.querySelectorAll('.jbar').forEach(b=>b.style.width=b.dataset.w+'%'),200);
+
+/* ════════ HEATMAP ════════ */
+(function(){const hm=document.getElementById('heatmap');const cl={Critical:"#ef4444",High:"#f59e0b",Medium:"#eab308",Low:"#22c55e"};
+  hm.innerHTML=`<div style="position:absolute;inset:0;background-image:linear-gradient(rgba(56,189,248,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.05) 1px,transparent 1px);background-size:40px 40px"></div>`;
+  D.zones.forEach(z=>{const c=cl[z.lvl];
+    hm.insertAdjacentHTML('beforeend',`<div title="${z.name}: ${z.d}/day" style="position:absolute;left:${z.x}%;top:${z.y}%;width:${z.r*2}px;height:${z.r*2}px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,${c}55,${c}11 70%);border:1.5px solid ${c}99;cursor:pointer;transition:transform .2s" onmouseover="this.style.transform='translate(-50%,-50%) scale(1.12)'" onmouseout="this.style.transform='translate(-50%,-50%)'">
+      <span style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 3px #000">${z.name}</span></div>`);});
+})();
+
+/* ════════ LIVE FEED ════════ */
+(function(){const body=document.getElementById('feedBody');let pool=[...D.feedSeed];
+  function ts(){const d=new Date();return d.toLocaleTimeString('en-GB',{hour12:false})}
+  function add(rowData,animate){const[v,vt,cf,loc,sev]=rowData;const c=sevColor(sev);
+    const tr=document.createElement('tr');tr.style.borderTop='1px solid var(--line)';
+    if(animate){tr.style.background='rgba(56,189,248,.08)';setTimeout(()=>tr.style.background='',1200);}
+    tr.innerHTML=`<td style="padding:10px"><span style="font-family:'JetBrains Mono';font-weight:600;font-size:12px;background:rgba(59,130,246,.14);color:#9ec5ff;padding:3px 8px;border-radius:6px">${v}</span></td>
+      <td style="padding:10px;color:var(--paper)">${vt}</td>
+      <td style="padding:10px;font-family:'JetBrains Mono';color:var(--mist)">${cf.toFixed(2)}</td>
+      <td style="padding:10px;color:var(--mist)">${loc}</td>
+      <td style="padding:10px;font-family:'JetBrains Mono';color:var(--steel)">${ts()}</td>
+      <td style="padding:10px"><span style="font-size:11px;font-weight:600;color:${c};background:${c}22;padding:3px 10px;border-radius:12px">${sev}</span></td>`;
+    body.insertBefore(tr,body.firstChild);
+    while(body.children.length>14)body.removeChild(body.lastChild);}
+  pool.forEach(r=>add(r,false));
+  setInterval(()=>{const r=pool[Math.floor(Math.random()*pool.length)];
+    const jitter=[r[0],r[1],Math.min(0.99,r[2]+(Math.random()*.06-.03)),r[3],r[4]];add(jitter,true);},3200);
+})();
+
+/* ════════ CHARTS (lazy per-view, CDN-guarded) ════════ */
+const CO={resp:{responsive:true,maintainAspectRatio:false},
+  grid:'rgba(255,255,255,.05)',tick:'#7785ad',mist:'#aab6da'};
+function gridY(extra){return Object.assign({ticks:{color:CO.tick},grid:{color:CO.grid}},extra||{})}
+function noLegend(){return{legend:{display:false}}}
+function legendR(){return{legend:{position:'right',labels:{color:CO.mist,font:{size:11},boxWidth:11,padding:8}}}}
+
+function buildCharts(v){
+  if(typeof Chart==='undefined'){return setTimeout(()=>buildCharts(v),350);}
+  if(chartsBuilt[v])return; chartsBuilt[v]=true;
+  const C=(id,cfg)=>{const el=document.getElementById(id);if(el)new Chart(el,cfg);};
+
+  if(v==='overview'){
+    C('ovMix',{type:'doughnut',data:{labels:D.violTypes,datasets:[{data:[34,18,16,12,11,6,3],
+      backgroundColor:['#3b82f6','#22d3ee','#f59e0b','#ef4444','#8b5cf6','#22c55e','#ec4899'],borderColor:'#0f1830',borderWidth:2}]},
+      options:{...CO.resp,cutout:'60%',plugins:legendR()&&{legend:legendR().legend}}});
+    C('ovTrend',{type:'line',data:{labels:['7','8','9','10','11','12','13','14','15','16','17','18'],
+      datasets:[{data:[120,210,340,290,180,160,170,190,240,310,420,480],borderColor:'#38bdf8',
+      backgroundColor:'rgba(56,189,248,.12)',fill:true,tension:.4,pointRadius:0,borderWidth:2}]},
+      options:{...CO.resp,plugins:{legend:noLegend()},scales:{y:gridY(),x:gridY({grid:{display:false}})}}});
+  }
+  if(v==='dna'){
+    C('dnaPie',{type:'doughnut',data:{labels:['First-time','Repeat','Habitual'],datasets:[{data:[2104,322,62],
+      backgroundColor:['#22c55e','#f59e0b','#ef4444'],borderColor:'#0f1830',borderWidth:2}]},
+      options:{...CO.resp,cutout:'62%',plugins:{legend:legendR().legend}}});
+    C('dnaTimeline',{type:'bar',data:{labels:['W1','W2','W3','W4'],datasets:[
+      {label:'Helmet',data:[2,1,3,2],backgroundColor:'#3b82f6'},
+      {label:'Red-light',data:[1,2,1,3],backgroundColor:'#ef4444'},
+      {label:'Wrong-side',data:[0,1,2,1],backgroundColor:'#8b5cf6'}]},
+      options:{...CO.resp,plugins:{legend:{labels:{color:CO.mist}}},scales:{x:{stacked:true,...gridY({grid:{display:false}})},y:{stacked:true,...gridY()}}}});
+  }
+  if(v==='jhi'){
+    C('jhiTrend',{type:'line',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[
+      {label:'Silk Board',data:[84,86,88,90,91,93,94],borderColor:'#ef4444',tension:.4,pointRadius:0,borderWidth:2},
+      {label:'Marathahalli',data:[72,74,76,78,79,80,81],borderColor:'#f59e0b',tension:.4,pointRadius:0,borderWidth:2},
+      {label:'MG Road',data:[68,70,69,71,72,72,73],borderColor:'#22d3ee',tension:.4,pointRadius:0,borderWidth:2}]},
+      options:{...CO.resp,plugins:{legend:{labels:{color:CO.mist}}},scales:{y:gridY(),x:gridY({grid:{display:false}})}}});
+    C('jhiBar',{type:'bar',data:{labels:['Critical','High','Medium','Low'],datasets:[{data:[12,21,9,5],
+      backgroundColor:['#ef4444','#f59e0b','#eab308','#22c55e'],borderRadius:6}]},
+      options:{...CO.resp,plugins:{legend:noLegend()},scales:{y:gridY(),x:gridY({grid:{display:false}})}}});
+  }
+  if(v==='forecast'){
+    C('fcMain',{type:'bar',data:{labels:['Tonight\n9–11PM','Mon\n8–10AM','Mon\n6–8PM','Tue\n8–10AM','Tue\n6–8PM','Wed\n8–10AM'],
+      datasets:[{label:'% change',data:[28,45,62,18,24,15],backgroundColor:['#f59e0b','#ef4444','#ef4444','#f59e0b','#f59e0b','#eab308'],borderRadius:6}]},
+      options:{...CO.resp,plugins:{legend:noLegend(),tooltip:{callbacks:{label:c=>'+'+c.parsed.y+'% violations'}}},
+      scales:{y:gridY({ticks:{color:CO.tick,callback:v=>'+'+v+'%'}}),x:gridY({grid:{display:false},ticks:{color:CO.mist,font:{size:10}}})}}});
+  }
+  if(v==='analytics'){
+    C('anTrend',{type:'bar',data:{labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],datasets:[
+      {label:'Critical',data:[280,310,290,330,360,420,390],backgroundColor:'#ef4444'},
+      {label:'High',data:[420,440,410,460,480,520,500],backgroundColor:'#f59e0b'},
+      {label:'Medium',data:[600,620,640,610,660,700,680],backgroundColor:'#eab308'}]},
+      options:{...CO.resp,plugins:{legend:{labels:{color:CO.mist}}},scales:{x:{stacked:true,...gridY({grid:{display:false}})},y:{stacked:true,...gridY()}}}});
+    C('anDist',{type:'bar',indexAxis:'y',data:{labels:D.violTypes,datasets:[{data:[34,18,16,12,11,6,3],
+      backgroundColor:'#3b82f6',borderRadius:5}]},options:{...CO.resp,plugins:{legend:noLegend()},scales:{x:gridY(),y:gridY({grid:{display:false}})}}});
+    C('anSev',{type:'doughnut',data:{labels:['Critical','High','Medium','Low'],datasets:[{data:[18,29,33,20],
+      backgroundColor:['#ef4444','#f59e0b','#eab308','#22c55e'],borderColor:'#0f1830',borderWidth:2}]},
+      options:{...CO.resp,cutout:'60%',plugins:{legend:legendR().legend}}});
+    C('anRepeat',{type:'line',data:{labels:['W1','W2','W3','W4','W5','W6'],datasets:[
+      {label:'New',data:[1800,1900,2000,2050,2080,2104],borderColor:'#22c55e',tension:.4,pointRadius:0,borderWidth:2},
+      {label:'Repeat',data:[240,260,280,300,315,322],borderColor:'#f59e0b',tension:.4,pointRadius:0,borderWidth:2},
+      {label:'Habitual',data:[40,46,51,55,59,62],borderColor:'#ef4444',tension:.4,pointRadius:0,borderWidth:2}]},
+      options:{...CO.resp,plugins:{legend:{labels:{color:CO.mist}}},scales:{y:gridY(),x:gridY({grid:{display:false}})}}});
+  }
+}
+buildCharts('overview');
+
+/* live counter drift */
+let kv=2841;setInterval(()=>{kv+=Math.floor(Math.random()*3);
+  const e=document.getElementById('kViol');if(e)e.textContent=kv.toLocaleString();},4000);
+</script>
+</body>
+</html>
